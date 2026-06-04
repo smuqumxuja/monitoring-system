@@ -1,5 +1,5 @@
 from app.schemas.alert import AlertOut
-from app.schemas.auth import Token, UserCreate, UserOut, UserUpdate
+from app.schemas.auth import CaptchaChallenge, Token, UserCreate, UserOut, UserUpdate
 from app.schemas.branch import BranchCreate, BranchOut, BranchUpdate
 from app.schemas.host import HostCreate, HostOut, HostUpdate
 from app.schemas.log import SystemLogOut, SystemLogUpdate
@@ -15,6 +15,7 @@ __all__ = [
     "BranchCreate",
     "BranchOut",
     "BranchUpdate",
+    "CaptchaChallenge",
     "CurrentSnapshot",
     "HostCreate",
     "HostOut",
