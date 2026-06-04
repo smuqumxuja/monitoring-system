@@ -11,6 +11,12 @@ type Options = RequestInit & {
   token?: string | null;
 };
 
+export type CaptchaChallenge = {
+  captcha_token: string;
+  question: string;
+  expires_in_seconds: number;
+};
+
 export async function apiFetch<T>(path: string, options: Options = {}): Promise<T> {
   const headers = new Headers(options.headers);
   if (options.token) headers.set("Authorization", `Bearer ${options.token}`);
@@ -26,10 +32,14 @@ export async function apiFetch<T>(path: string, options: Options = {}): Promise<
   return response.json() as Promise<T>;
 }
 
-export async function login(username: string, password: string): Promise<string> {
+export const getCaptcha = () => apiFetch<CaptchaChallenge>("/auth/captcha");
+
+export async function login(username: string, password: string, captchaToken: string, captchaAnswer: string): Promise<string> {
   const form = new URLSearchParams();
   form.set("username", username);
   form.set("password", password);
+  form.set("captcha_token", captchaToken);
+  form.set("captcha_answer", captchaAnswer);
   const response = await apiFetch<{ access_token: string }>("/auth/login", {
     method: "POST",
     body: form
