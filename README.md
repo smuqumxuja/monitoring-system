@@ -178,12 +178,18 @@ Windows PowerShell:
 Invoke-RestMethod http://localhost:8000/health
 ```
 
-Login token olish:
+Login token olish uchun avval captcha savolini oling:
+
+```bash
+curl http://localhost:8000/api/auth/captcha
+```
+
+Javobdagi `question` ni yechib, `captcha_token` va `captcha_answer` bilan login qiling:
 
 ```bash
 curl -X POST http://localhost:8000/api/auth/login \
   -H "Content-Type: application/x-www-form-urlencoded" \
-  -d "username=admin&password=change-me-now"
+  -d "username=admin&password=change-me-now&captcha_token=TOKEN&captcha_answer=ANSWER"
 ```
 
 Frontendni oching:
@@ -379,6 +385,7 @@ GET /api/metrics/risks
 Auth:
 
 ```text
+GET /api/auth/captcha
 POST /api/auth/login
 GET /api/auth/me
 ```
