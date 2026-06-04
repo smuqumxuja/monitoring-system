@@ -6,6 +6,12 @@ class Token(BaseModel):
     token_type: str = "bearer"
 
 
+class CaptchaChallenge(BaseModel):
+    captcha_token: str
+    question: str
+    expires_in_seconds: int
+
+
 class UserOut(BaseModel):
     id: int
     username: str
