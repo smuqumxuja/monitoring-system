@@ -17,6 +17,14 @@ export default function DashboardPage({ token }: Props) {
   const { snapshot, status } = useRealtimeMetrics(token);
   const [selected, setSelected] = useState<EntityRef | null>(null);
   const vms = useMemo(() => snapshot?.hosts.flatMap((host) => host.vms) ?? [], [snapshot]);
+  const historyEntities = useMemo(
+    () =>
+      snapshot?.hosts.flatMap((host) => [
+        { type: "host" as const, id: host.id, label: host.name },
+        ...host.vms.map((vm) => ({ type: "vm" as const, id: vm.id, label: `${host.name} / ${vm.name}` }))
+      ]) ?? [],
+    [snapshot]
+  );
   const hostCount = snapshot?.hosts.length ?? 0;
   const onlineHosts = snapshot?.hosts.filter((host) => host.network_status?.online).length ?? 0;
   const offlineHosts = Math.max(hostCount - onlineHosts, 0);
@@ -27,8 +35,8 @@ export default function DashboardPage({ token }: Props) {
   const warning = snapshot?.active_alerts.filter((alert) => alert.level === "warning").length ?? 0;
   const risks = snapshot?.predictive_risks ?? [];
   const criticalRisks = risks.filter((risk) => risk.level === "critical").length;
-  const firstHost = snapshot?.hosts[0];
-  const selectedEntity = selected ?? (firstHost ? { type: "host" as const, id: firstHost.id, label: firstHost.name } : null);
+  const selectedStillExists = selected && historyEntities.some((entity) => entity.type === selected.type && entity.id === selected.id);
+  const selectedEntity = selectedStillExists ? selected : historyEntities[0] ?? null;
 
   return (
     <div className="space-y-5">
@@ -67,7 +75,7 @@ export default function DashboardPage({ token }: Props) {
             </div>
             <AlertPanel token={token} alerts={snapshot.active_alerts} />
           </section>
-          {selectedEntity && <HistoryChart token={token} entity={selectedEntity} />}
+          {selectedEntity && <HistoryChart token={token} entity={selectedEntity} entityOptions={historyEntities} onEntityChange={setSelected} />}
         </>
       )}
     </div>
