@@ -20,6 +20,8 @@ import type { Branch, HostRecord, NotificationSettings, SystemLog, Threshold, Us
 type Props = { token: string; currentUser: User };
 type Tab = "hosts" | "vms" | "thresholds" | "notifications" | "users" | "branches" | "logs";
 type Draft = Record<string, string | number | boolean | null | undefined>;
+type SortDirection = "asc" | "desc";
+type VMSortKey = "vm" | "host";
 type HostDraft = { branch_id: number | null; name: string; hostname: string; username: string; password: string; port: number; verify_ssl: boolean; active: boolean; snmp_enabled: boolean; snmp_community: string; snmp_port: number };
 type VMDraft = { host_id: number | null; moid: string; name: string; guest_os: string; ip_address: string; power_state: string; uptime_seconds: string; monitoring_enabled: boolean };
 type UserDraft = { username: string; password: string; role: User["role"]; branch_id: number | null; is_active: boolean };
@@ -51,12 +53,21 @@ export default function AdminPage({ token, currentUser }: Props) {
   const [thresholdDrafts, setThresholdDrafts] = useState<Record<string, Draft>>({});
   const [userDrafts, setUserDrafts] = useState<Record<number, Draft>>({});
   const [logDrafts, setLogDrafts] = useState<Record<number, Draft>>({});
+  const [vmSort, setVmSort] = useState<{ key: VMSortKey; direction: SortDirection }>({ key: "vm", direction: "asc" });
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("Tizim tayyor.");
 
   const isSuperadmin = currentUser.role === "superadmin";
   const firstBranch = branches[0]?.id ?? null;
   const hostName = useMemo(() => new Map(hosts.map((row) => [row.id, row.name])), [hosts]);
+  const sortedVms = useMemo(() => {
+    const direction = vmSort.direction === "asc" ? 1 : -1;
+    return [...vms].sort((left, right) => {
+      const leftValue = vmSort.key === "host" ? hostName.get(left.host_id) ?? String(left.host_id) : left.name;
+      const rightValue = vmSort.key === "host" ? hostName.get(right.host_id) ?? String(right.host_id) : right.name;
+      return leftValue.localeCompare(rightValue, "uz", { sensitivity: "base", numeric: true }) * direction;
+    });
+  }, [hostName, vmSort, vms]);
 
   async function refresh() {
     setLoading(true);
@@ -179,6 +190,10 @@ export default function AdminPage({ token, currentUser }: Props) {
     setTab("vms");
   }
 
+  function changeVMSort(key: VMSortKey) {
+    setVmSort((current) => (current.key === key ? { key, direction: current.direction === "asc" ? "desc" : "asc" } : { key, direction: "asc" }));
+  }
+
   const tabs: Array<{ id: Tab; label: string; icon: ReactNode; superOnly?: boolean }> = [
     { id: "hosts", label: "ESXi hostlar", icon: <Server size={16} /> },
     { id: "vms", label: "VM lar", icon: <HardDrive size={16} /> },
@@ -228,7 +243,14 @@ export default function AdminPage({ token, currentUser }: Props) {
           <Check label="Monitoring yoqilgan" checked={vm.monitoring_enabled} onChange={(monitoring_enabled) => setVm({ ...vm, monitoring_enabled })} />
           <Actions primary={editingVM ? "VM o'zgarishini saqlash" : "VM qo'shish"} onCancel={editingVM ? () => { setEditingVM(null); setVm({ ...vmBlank, host_id: hosts[0]?.id ?? null }); } : undefined} />
         </form>
-        <Table headers={["VM", "Host", "IP", "Power", "Monitoring", "Amal"]}>{vms.map((row) => <tr key={row.id}><Td>{row.name}</Td><Td>{hostName.get(row.host_id) ?? row.host_id}</Td><Td>{row.ip_address ?? "-"}</Td><Td>{row.power_state ?? "-"}</Td><Td>{row.monitoring_enabled ? "on" : "off"}</Td><Td><Small onClick={() => startVMEdit(row)}>Tahrirlash</Small><Small onClick={() => void save(() => apiFetch(`/admin/vms/${row.id}/monitoring`, { method: "PUT", token, body: JSON.stringify({ monitoring_enabled: !row.monitoring_enabled }) }), "VM monitoring holati o'zgardi.")}>{row.monitoring_enabled ? "O'chirish" : "Yoqish"}</Small><Danger onClick={() => void save(() => apiFetch(`/admin/vms/${row.id}`, { method: "DELETE", token }), "VM o'chirildi.")}>O'chirish</Danger></Td></tr>)}</Table>
+        <Table headers={[
+          <SortHeader label="VM" active={vmSort.key === "vm"} direction={vmSort.direction} onClick={() => changeVMSort("vm")} />,
+          <SortHeader label="Host" active={vmSort.key === "host"} direction={vmSort.direction} onClick={() => changeVMSort("host")} />,
+          "IP",
+          "Power",
+          "Monitoring",
+          "Amal"
+        ]}>{sortedVms.map((row) => <tr key={row.id}><Td>{row.name}</Td><Td>{hostName.get(row.host_id) ?? row.host_id}</Td><Td>{row.ip_address ?? "-"}</Td><Td>{row.power_state ?? "-"}</Td><Td>{row.monitoring_enabled ? "on" : "off"}</Td><Td><Small onClick={() => startVMEdit(row)}>Tahrirlash</Small><Small onClick={() => void save(() => apiFetch(`/admin/vms/${row.id}/monitoring`, { method: "PUT", token, body: JSON.stringify({ monitoring_enabled: !row.monitoring_enabled }) }), "VM monitoring holati o'zgardi.")}>{row.monitoring_enabled ? "O'chirish" : "Yoqish"}</Small><Danger onClick={() => void save(() => apiFetch(`/admin/vms/${row.id}`, { method: "DELETE", token }), "VM o'chirildi.")}>O'chirish</Danger></Td></tr>)}</Table>
       </Section>}
 
       {tab === "thresholds" && <Section title="Threshold sozlamalari"><Table headers={["Metric", "Warning", "Critical", "Operator", "Enabled", "Amal"]}>{thresholds.map((row) => {
@@ -327,8 +349,12 @@ function Actions({ primary, onCancel }: { primary: string; onCancel?: () => void
   return <div className="flex items-end gap-2"><button className="flex items-center gap-2 rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white" type="submit"><Save size={16} />{primary}</button>{onCancel && <button className="rounded-md border border-zinc-300 px-4 py-2 text-sm" type="button" onClick={onCancel}>Bekor qilish</button>}</div>;
 }
 
-function Table({ headers, children }: { headers: string[]; children: ReactNode }) {
-  return <div className="overflow-x-auto rounded-lg border border-zinc-200"><table className="min-w-full divide-y divide-zinc-200 text-sm"><thead className="bg-zinc-50"><tr>{headers.map((h) => <th key={h} className="px-3 py-2 text-left font-semibold text-zinc-600">{h}</th>)}</tr></thead><tbody className="divide-y divide-zinc-100">{children}</tbody></table></div>;
+function SortHeader({ label, active, direction, onClick }: { label: string; active: boolean; direction: SortDirection; onClick: () => void }) {
+  return <button className={`flex items-center gap-2 font-semibold ${active ? "text-emerald-700" : "text-zinc-600 hover:text-zinc-900"}`} type="button" onClick={onClick}>{label}<span className="text-[11px] font-medium">{active ? (direction === "asc" ? "A-Z" : "Z-A") : "sort"}</span></button>;
+}
+
+function Table({ headers, children }: { headers: ReactNode[]; children: ReactNode }) {
+  return <div className="overflow-x-auto rounded-lg border border-zinc-200"><table className="min-w-full divide-y divide-zinc-200 text-sm"><thead className="bg-zinc-50"><tr>{headers.map((h, index) => <th key={typeof h === "string" ? h : index} className="px-3 py-2 text-left font-semibold text-zinc-600">{h}</th>)}</tr></thead><tbody className="divide-y divide-zinc-100">{children}</tbody></table></div>;
 }
 
 function Td({ children }: { children: ReactNode }) {
