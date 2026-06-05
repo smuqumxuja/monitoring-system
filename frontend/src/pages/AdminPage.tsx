@@ -220,7 +220,7 @@ export default function AdminPage({ token, currentUser }: Props) {
         <form className="grid gap-3 lg:grid-cols-4" onSubmit={submitVM}>
           <label className="text-sm font-medium text-zinc-700">ESXi host<select className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2" value={vm.host_id ?? ""} onChange={(e) => setVm({ ...vm, host_id: Number(e.target.value) || null })}>{hosts.map((row) => <option key={row.id} value={row.id}>{row.name}</option>)}</select></label>
           <Input label="VM nomi" value={vm.name} onChange={(name) => setVm({ ...vm, name })} />
-          <Input label="MOID" value={vm.moid} onChange={(moid) => setVm({ ...vm, moid })} />
+          <Input label="MOID" value={vm.moid} onChange={(moid) => setVm({ ...vm, moid })} hint="MOID (Managed Object ID) - ESXi/vCenter ichidagi VMning noyob identifikatori, odatda vm-123 ko'rinishida. Bilmasangiz bo'sh qoldiring; pyVmomi topganda avtomatik yangilanadi." />
           <Input label="IP address" value={vm.ip_address} onChange={(ip_address) => setVm({ ...vm, ip_address })} />
           <Input label="Guest OS" value={vm.guest_os} onChange={(guest_os) => setVm({ ...vm, guest_os })} />
           <Input label="Power status" value={vm.power_state} onChange={(power_state) => setVm({ ...vm, power_state })} />
@@ -298,8 +298,8 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
   return <section className="space-y-4 rounded-lg border border-zinc-200 bg-white p-4"><h3 className="font-semibold">{title}</h3>{children}</section>;
 }
 
-function Input({ label, value, onChange, type = "text" }: { label: string; value: string; onChange: (value: string) => void; type?: string }) {
-  return <label className="text-sm font-medium text-zinc-700">{label}<input className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2" type={type} value={value} onChange={(e) => onChange(e.target.value)} /></label>;
+function Input({ label, value, onChange, type = "text", hint }: { label: string; value: string; onChange: (value: string) => void; type?: string; hint?: string }) {
+  return <label className="text-sm font-medium text-zinc-700">{label}<input className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2" type={type} value={value} onChange={(e) => onChange(e.target.value)} />{hint && <span className="mt-1 block text-xs font-normal leading-5 text-zinc-500">{hint}</span>}</label>;
 }
 
 function NumberInput({ label, value, onChange }: { label: string; value: number; onChange: (value: number) => void }) {
