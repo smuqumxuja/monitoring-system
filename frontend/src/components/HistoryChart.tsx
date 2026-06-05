@@ -9,9 +9,11 @@ const ranges = ["1h", "24h", "7d", "30d"] as const;
 type Props = {
   token: string;
   entity: EntityRef;
+  entityOptions?: EntityRef[];
+  onEntityChange?: (entity: EntityRef) => void;
 };
 
-export default function HistoryChart({ token, entity }: Props) {
+export default function HistoryChart({ token, entity, entityOptions = [], onEntityChange }: Props) {
   const [range, setRange] = useState<(typeof ranges)[number]>("1h");
   const [rows, setRows] = useState<Metric[]>([]);
 
@@ -27,6 +29,12 @@ export default function HistoryChart({ token, entity }: Props) {
     latency: row.latency_ms,
     loss: row.packet_loss_percent
   }));
+  const selectedEntityKey = `${entity.type}:${entity.id}`;
+
+  function changeEntity(value: string) {
+    const next = entityOptions.find((item) => `${item.type}:${item.id}` === value);
+    if (next) onEntityChange?.(next);
+  }
 
   return (
     <section className="rounded-lg border border-zinc-200 bg-white p-4">
@@ -35,12 +43,27 @@ export default function HistoryChart({ token, entity }: Props) {
           <div className="font-semibold">Tarixiy grafik</div>
           <div className="text-sm text-zinc-500">{entity.label}</div>
         </div>
-        <div className="flex rounded-md border border-zinc-200 bg-zinc-50 p-1">
-          {ranges.map((item) => (
-            <button key={item} className={`rounded px-3 py-1 text-sm ${range === item ? "bg-white text-emerald-700 shadow-sm" : "text-zinc-600"}`} onClick={() => setRange(item)}>
-              {item}
-            </button>
-          ))}
+        <div className="flex flex-wrap items-center gap-2">
+          {entityOptions.length > 1 && (
+            <label className="flex items-center gap-2 text-sm text-zinc-600">
+              <span>Host/VM tanlash</span>
+              <select className="rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-700" value={selectedEntityKey} onChange={(event) => changeEntity(event.target.value)}>
+                {entityOptions.map((item) => (
+                  <option key={`${item.type}:${item.id}`} value={`${item.type}:${item.id}`}>
+                    {item.type === "host" ? "Host: " : "VM: "}
+                    {item.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
+          <div className="flex rounded-md border border-zinc-200 bg-zinc-50 p-1">
+            {ranges.map((item) => (
+              <button key={item} className={`rounded px-3 py-1 text-sm ${range === item ? "bg-white text-emerald-700 shadow-sm" : "text-zinc-600"}`} onClick={() => setRange(item)}>
+                {item}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
       <div className="h-72">
@@ -66,4 +89,3 @@ export default function HistoryChart({ token, entity }: Props) {
     </section>
   );
 }
-
